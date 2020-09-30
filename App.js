@@ -4,87 +4,105 @@ import { Alert, Button, StyleSheet, Text, View } from 'react-native';
 import {vibrate} from './utils';
 import Reloj from "./utils/reloj";
 
-//const [min,descontarMin]=useState(0)
-const minutos =sMin=>{
-  const [min,descontarMin]=useState(sMin);
-  const desMin =()=>{
-      if(min!=0)
-        descontarMin(min-1);
-    };
-  const setMinutos = setMin=>{
-    descontarMin(min-min+setMin);
-  };
+let minTrab=25;
+let minDes=5;
+let minAux=minTrab;
+let segun=0;
+let intervaloID=null;
+let trabODesc = true;
 
-  return {min,desMin,setMinutos};
-};
+export default function App() {
+  const [seg,setSegundos]=useState(segun);  
+  const [min,setMinutos]=useState(minTrab);  
+  const [botonControl,setBotonControl]=useState(false)
 
-const segundos =()=>{
-  const [seg,descontarSegundos]=useState(60);
-  const desSeg =()=>{
-    if(seg==0)
-      descontarSegundos(seg+59);
-    else
-      descontarSegundos(seg-1);
-  }
-  return {seg,desSeg};
-};
+  const [titulo,setTitulo]=useState("Hora de trabajar :(");
+  const [empezarOPausa,setEmpezarPausa]= useState(false);
 
-const reloj =minReloj=>{
-  const {seg,desSeg}= segundos();
-  const {min,desMin,setMinutos}= minutos(minReloj-1);
-
-  const funcionar = ()=>{
-    if(seg==0){
-      desMin();
+  useEffect(()=>{
+    if(empezarOPausa){
+      intervaloID= setInterval(()=>{
+        if (segun>0){
+          setSegundos((--segun));
+        }else{
+          segun=59;
+          setSegundos(segun);
+          if(minAux>0){
+            setMinutos((--minAux));
+          }else{
+            cambiarCiclo();
+          }
+        }
+      },1000);
+      }
+    else{
+      clearInterval(intervaloID);
     }
-    desSeg();
-  };
-  return {seg,min,funcionar,setMinutos};
-};
+  },[empezarOPausa]);
 
-let esDescanso=true;
-let textTitulo = "Hora de trabajar! :(";
-const relojPomodoro = (minDes,minTrab)=>{
-  const {seg,min,funcionar,setMinutos}=reloj(minTrab);
-
-  const comenzar = ()=>{
-    console.log(min,seg,esDescanso);
-    funcionar();
-    if(min==0&&seg==1&&esDescanso){
-      textTitulo = "Hora de descansar! :D";
-      setMinutos(minDes-1);
-      esDescanso=false;
-      vibrate();
-    }else{
-      if(min==0&&seg==1&&esDescanso==false){
-        textTitulo = "Hora de trabajar! :(";
+  function cambiarCiclo (){
+    if(empezarOPausa){
+      if(trabODesc){
+        minTrab=25;
+        setMinutos(minDes-1);
+        minAux=minDes-1;
+        trabODesc=false;
+        setTitulo("Hora de descansar :)");
+        vibrate();
+      }else{
+        minDes=5;
         setMinutos(minTrab-1);
-        esDescanso=true;
+        minAux=minTrab-1;
+        trabODesc=true;
+        setTitulo("Hora de trabajar :(");
         vibrate();
       }
     }
-  };
-  return {seg,min,comenzar};
-};
-
-
-export default function App() {
-const {seg,min,comenzar}=relojPomodoro(1,2);
-useEffect(()=>{
-  if(seg!=60){
-    setTimeout(()=>{
-      comenzar();
-    },1000); 
   }
-},[seg]);
+
+  function pausa(){
+    if(empezarOPausa){
+      setEmpezarPausa(false);
+    }else{
+      setEmpezarPausa(true);
+    }
+  }  
+  function reiniciar(){
+    clearInterval(intervaloID);
+    setEmpezarPausa(false);
+    segun=0;
+    setSegundos(segun);
+    minTrab=25;
+    minDes=5;
+    minAux=minTrab;
+    setMinutos(minTrab);
+    setBotonControl(false); 
+    setTitulo("Hora de trabajar :(");
+  }  
   return (
     <View style={styles.container}>
-      <Reloj textTipo={textTitulo} seg={seg} min={min}></Reloj>
-      <Button 
-        style={styles.boton}
-        title="Empezar"
-        onPress={comenzar}
-      />
+      <Reloj textTipo={titulo} seg={seg} min={min}></Reloj>
+      <View style={styles.botones}>
+        <Button 
+          title="Empezar"
+          onPress={()=>{setEmpezarPausa(true);
+          setBotonControl(true);     
+          }}
+          disabled={botonControl}
+        />
+        <Button 
+          title="Pausar"
+          onPress={()=>{
+            pausa();
+            setBotonControl(false);     
+          }}
+          disabled={!botonControl}
+        />
+        <Button 
+          title="Reiniciar"
+          onPress={reiniciar}
+        />
+      </View>
       <StatusBar style="auto" />
       <Text style={styles.texto}>-----------------</Text>
     </View>
@@ -99,8 +117,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  boton:{
-    fontSize:60
+  botones:{
+    flexDirection: 'row'
   },
   texto:{
     color:'white',
